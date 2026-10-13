@@ -1,0 +1,56 @@
+"""YouTube audio downloader — iPhone version (no FFmpeg, no command line).
+
+Saves the best available audio as .m4a, which plays natively on iOS.
+Tap Run, paste a video or playlist URL when asked.
+"""
+
+import sys
+from pathlib import Path
+
+import yt_dlp
+
+OUTPUT_DIR = Path("downloads")
+
+
+def download_audio(url: str, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    ydl_opts = {
+        # Prefer m4a (AAC): no conversion needed, so no FFmpeg required.
+        "format": "bestaudio[ext=m4a]/bestaudio",
+        "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
+        "noplaylist": False,
+    }
+
+    print(f"\nDownloading from: {url}")
+    print(f"Saving to: {output_dir.resolve()}\n")
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+    except Exception as exc:
+        print(f"\nDownload failed: {exc}")
+        sys.exit(1)
+
+    if info and "entries" in info:
+        n = len([e for e in info["entries"] if e])
+        print(f"\nPlaylist done: {n} items.")
+    elif info:
+        print(f"\nDone: {info.get('title', 'Unknown title')}")
+
+    print(f"Files are in: {output_dir.resolve()}")
+
+
+def main() -> None:
+    # Use a command-line argument if there is one, otherwise ask.
+    url = sys.argv[1] if len(sys.argv) > 1 else input("Paste YouTube URL: ").strip()
+
+    if "youtube.com" not in url and "youtu.be" not in url:
+        print("That doesn't look like a YouTube URL.")
+        sys.exit(1)
+
+    download_audio(url, OUTPUT_DIR)
+
+
+if __name__ == "__main__":
+    main()
